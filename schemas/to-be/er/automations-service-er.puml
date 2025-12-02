@@ -1,0 +1,15 @@
+@startuml
+
+entity "scenarios" as scenarios {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID
+  * name : VARCHAR(255)
+  * scenario : JSONB
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+  --
+  index(user_id)
+}
+
+@enduml

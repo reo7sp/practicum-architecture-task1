@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: Actions Service API
+  description: Сервис выполнения действий на устройствах умного дома
+  version: 1.0.0
+servers:
+  - url: http://localhost:5003
+    description: Сервер управления действиями устройств
+
+tags:
+  - name: Actions
+    description: Выполнение действий на устройствах
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+
+  responses:
+    Success:
+      description: Действие выполнено успешно
+    
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/devices/{manufacturer_id}/{device_id}/actions/{action_id}:
+    post:
+      tags:
+        - Actions
+      summary: Вызов действия
+      description: Выполнение конкретного действия на устройстве
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: manufacturer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор производителя устройства
+          example: xiaomi
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+          example: lamp_001
+        - name: action_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор действия для выполнения
+          example: turn_on
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'

@@ -1,0 +1,105 @@
+openapi: 3.0.3
+info:
+  title: Integration Service API
+  description: Сервис интеграции устройств сторонних производителей
+  version: 1.0.0
+servers:
+  - url: http://localhost:5006
+    description: Сервер интеграции устройств
+
+tags:
+  - name: Integration
+    description: Интеграция устройств от производителей
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+    
+    DeviceRegistration:
+      type: object
+      required:
+        - manufacturer_id
+        - device_id
+        - name
+      properties:
+        manufacturer_id:
+          type: string
+          example: xiaomi
+          description: Идентификатор производителя
+        device_id:
+          type: string
+          example: temp_sensor_001
+          description: Идентификатор устройства
+        name:
+          type: string
+          example: Датчик температуры в гостиной
+          description: Название устройства
+
+  responses:
+    Success:
+      description: Операция выполнена успешно
+    
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Conflict:
+      description: Устройство уже существует
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/devices/:
+    post:
+      tags:
+        - Integration
+      summary: Регистрация устройства
+      description: Регистрация нового устройства через сервис интеграции
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/devices/{manufacturer_id}/{device_id}:
+    delete:
+      tags:
+        - Integration
+      summary: Удаление устройства
+      description: Удаление устройства через сервис интеграции
+      parameters:
+        - name: manufacturer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор производителя устройства
+          example: xiaomi
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+          example: temp_sensor_001
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'

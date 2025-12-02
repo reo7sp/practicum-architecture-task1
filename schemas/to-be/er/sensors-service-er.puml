@@ -1,0 +1,29 @@
+@startuml
+
+entity "sensors" as sensors {
+  * id : SERIAL <<PK>>
+  --
+  * name : VARCHAR(100)
+  * type : VARCHAR(50)
+  * location : VARCHAR(100)
+  * value : FLOAT
+  * unit : VARCHAR(20)
+  * status : VARCHAR(20)
+  * last_updated : TIMESTAMP
+  * created_at : TIMESTAMP
+}
+
+entity "sensor_v2_ids" as v2ids {
+  * manufacturer_id : VARCHAR(100) <<PK>>
+  * device_id : VARCHAR(100) <<PK>>
+  * sensor_id : VARCHAR(100) <<PK>>
+  --
+  * id : INTEGER <<FK>>
+  --
+  unique(manufacturer_id, device_id, sensor_id)
+  index(id)
+}
+
+sensors ||--o{ v2ids : "имеет маппинг"
+
+@enduml

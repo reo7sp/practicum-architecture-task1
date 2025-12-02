@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "actions-service"
+version = "0.1.0"
+description = "Actions Service"
+authors = ["Smart Home Team"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "5.0.1"
+djangorestframework = "3.15.1"
+kafka-python = "2.0.2"
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

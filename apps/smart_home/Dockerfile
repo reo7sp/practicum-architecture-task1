@@ -1,5 +1,5 @@
 # Build stage
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -17,10 +17,13 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o smarthome
 
 # Runtime stage
-FROM alpine:latest
+FROM debian:bookworm-slim
 
 # Install necessary runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    tzdata \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app

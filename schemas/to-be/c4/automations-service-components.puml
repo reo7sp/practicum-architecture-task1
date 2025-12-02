@@ -1,0 +1,24 @@
+@startuml
+!include <C4/C4_Component>
+
+title Диаграмма компонентов - Automations Service
+
+Container_Boundary(api, "Automations Service") {
+    Component(viewsets, "ViewSets", "DRF", "CRUD операции со сценариями")
+    Component(serializers, "Serializers", "DRF", "Валидация данных")
+    Component(consumer, "Kafka Consumer", "Consumer", "Слушает события")
+    Component(producer, "Kafka Producer", "Producer", "Публикует события")
+    Component(models, "Models", "Django ORM", "Модели данных")
+}
+
+ContainerDb(database, "PostgreSQL", "База данных", "Хранит сценарии")
+ContainerQueue(kafka, "Kafka", "Message Broker", "Очередь событий")
+
+Rel(viewsets, serializers, "Использует")
+Rel(viewsets, models, "Использует")
+Rel(consumer, kafka, "Подписывается", "Kafka")
+Rel(consumer, models, "Обрабатывает события")
+Rel(producer, kafka, "Публикует события", "Kafka")
+Rel(models, database, "Читает/Пишет", "SQL")
+
+@enduml

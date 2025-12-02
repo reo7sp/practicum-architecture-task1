@@ -1,0 +1,15 @@
+@startuml
+
+entity "devices" as devices {
+  * manufacturer_id : VARCHAR(100) <<PK>>
+  * device_id : VARCHAR(100) <<PK>>
+  --
+  * user_id : UUID
+  * name : VARCHAR(255)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+  --
+  index(user_id)
+}
+
+@enduml

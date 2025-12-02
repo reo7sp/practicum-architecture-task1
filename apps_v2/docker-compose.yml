@@ -1,0 +1,308 @@
+services:
+  postgres-sensors:
+    image: postgres:16
+    container_name: sensors-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sensors_db
+    volumes:
+      - postgres_sensors_data:/var/lib/postgresql/data
+      - ./sensors-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  postgres-devices:
+    image: postgres:16
+    container_name: devices-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=devices_db
+    volumes:
+      - postgres_devices_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  postgres-integrations:
+    image: postgres:16
+    container_name: integrations-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=integrations_db
+    volumes:
+      - postgres_integrations_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  postgres-auth:
+    image: postgres:16
+    container_name: auth-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=auth_db
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  postgres-automations:
+    image: postgres:16
+    container_name: automations-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=automations_db
+    volumes:
+      - postgres_automations_data:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://kafka:29092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  temperature-api:
+    build:
+      context: ../apps/temperature-api
+      dockerfile: Dockerfile
+    container_name: temperature-api
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  sensors-service:
+    build:
+      context: ./sensors-service
+      dockerfile: Dockerfile
+    container_name: sensors-service
+    depends_on:
+      postgres-sensors:
+        condition: service_healthy
+      temperature-api:
+        condition: service_started
+      kafka:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres-sensors:5432/sensors_db
+      - TEMPERATURE_API_URL=http://temperature-api:8081
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=sensor-readings
+      - KAFKA_GROUP_ID=sensors-service
+      - PORT=:5005
+    ports:
+      - "5005:5005"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  devices-service:
+    build:
+      context: ./devices-service
+      dockerfile: Dockerfile
+    container_name: devices-service
+    depends_on:
+      postgres-devices:
+        condition: service_healthy
+      integration-service:
+        condition: service_started
+    environment:
+      - DB_NAME=devices_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres-devices
+      - DB_PORT=5432
+      - INTEGRATION_SERVICE_URL=http://integration-service:5006
+    ports:
+      - "5002:5002"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:5002"
+
+  integration-service:
+    build:
+      context: ./integration-service
+      dockerfile: Dockerfile
+    container_name: integration-service
+    depends_on:
+      postgres-integrations:
+        condition: service_healthy
+    environment:
+      - DB_NAME=integrations_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres-integrations
+      - DB_PORT=5432
+    ports:
+      - "5006:5006"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:5006"
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    environment:
+      - DB_NAME=auth_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres-auth
+      - DB_PORT=5432
+      - JWT_SECRET_KEY=jwt-secret-key-change-in-production
+    ports:
+      - "5001:5001"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:5001"
+
+  actions-service:
+    build:
+      context: ./actions-service
+      dockerfile: Dockerfile
+    container_name: actions-service
+    depends_on:
+      kafka:
+        condition: service_started
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=device-actions
+    ports:
+      - "5003:5003"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+  automations-service:
+    build:
+      context: ./automations-service
+      dockerfile: Dockerfile
+    container_name: automations-service
+    depends_on:
+      postgres-automations:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      - DB_NAME=automations_db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_HOST=postgres-automations
+      - DB_PORT=5432
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=automation-events
+    ports:
+      - "5004:5004"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:5004"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    depends_on:
+      - auth-service
+      - devices-service
+      - actions-service
+      - automations-service
+      - sensors-service
+    environment:
+      - PORT=8080
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - DEVICES_SERVICE_URL=http://devices-service:5002
+      - ACTIONS_SERVICE_URL=http://actions-service:5003
+      - AUTOMATIONS_SERVICE_URL=http://automations-service:5004
+      - SENSORS_SERVICE_URL=http://sensors-service:5005
+    ports:
+      - "8080:8080"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+
+volumes:
+  postgres_sensors_data:
+  postgres_devices_data:
+  postgres_integrations_data:
+  postgres_auth_data:
+  postgres_automations_data:
+  kafka_data:
+
+networks:
+  smarthome-network:
+    driver: bridge

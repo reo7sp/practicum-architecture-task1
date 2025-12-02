@@ -1,0 +1,12 @@
+@startuml
+
+!include <C4/C4_Container>
+
+Person(User, "Пользователь")
+System(SmartHomeSys, "Smart Home System", "Система, которая организует управление умным домом")
+System_Ext(HeatingSys, "Heating System", "Система, которая занимается отоплением")
+
+Rel(User, SmartHomeSys, "Использует")
+Rel(SmartHomeSys, HeatingSys, "Получает данные о температуре")
+
+@enduml

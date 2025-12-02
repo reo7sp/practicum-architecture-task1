@@ -1,0 +1,28 @@
+@startuml
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  * email : VARCHAR(255)
+  * password_hash : VARCHAR(255)
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+  --
+  unique(email)
+}
+
+entity "sessions" as sessions {
+  * id : UUID <<PK>>
+  --
+  * token : VARCHAR(512)
+  * user_id : UUID <<FK>>
+  * created_at : TIMESTAMP
+  * expires_at : TIMESTAMP
+  --
+  unique(token)
+  index(user_id)
+}
+
+users ||--o{ sessions : "имеет"
+
+@enduml

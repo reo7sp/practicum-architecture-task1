@@ -1,0 +1,59 @@
+@startuml
+title Диаграмма кода - Auth Service (Django REST Framework)
+
+package "viewsets" {
+    class UserViewSet {
+        + create(request)
+        - hash_password(password)
+    }
+    
+    class SessionViewSet {
+        + create(request)
+        + check(request)
+        - generate_token(user_id)
+        - validate_token(token)
+    }
+}
+
+package "serializers" {
+    class UserRegistrationSerializer {
+        + email: EmailField
+        + password: CharField
+        + validate(attrs)
+        + create(validated_data)
+    }
+    
+    class LoginSerializer {
+        + email: EmailField
+        + password: CharField
+        + validate(attrs)
+    }
+}
+
+package "models" {
+    class User {
+        + id: UUIDField(PK)
+        + email: CharField
+        + password_hash: CharField
+        + created_at: DateTimeField
+        + save()
+        {static} + objects: Manager
+    }
+    
+    class Session {
+        + id: UUIDField(PK)
+        + user_id: UUIDField(FK)
+        + token: CharField
+        + expires_at: DateTimeField
+        + save()
+        {static} + objects: Manager
+    }
+}
+
+UserViewSet --> UserRegistrationSerializer : uses
+SessionViewSet --> LoginSerializer : uses
+UserViewSet --> User : uses
+SessionViewSet --> User : uses
+SessionViewSet --> Session : uses
+
+@enduml

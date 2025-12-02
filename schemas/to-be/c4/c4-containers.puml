@@ -1,0 +1,82 @@
+@startuml
+!include <C4/C4_Container>
+
+Person(User, "Пользователь")
+
+Container(GWCont, "API Gateway")
+Rel_D(User, GWCont, " ")
+
+System_Boundary(UsersSys, "Users System") {
+    Container(AuthCont, "Auth Service")
+    ContainerDb(UsersDB, "Users DB")
+    Rel_D(AuthCont, UsersDB, "читает/пишет пользователей")
+    Rel(GWCont, AuthCont, "авторизоваться/зарегистрироваться")
+}
+
+System_Boundary(DevicesSys, "Devices System") {
+    Container(DevicesCont, "Devices Service")
+    ContainerDb(DevicesDB, "Devices DB")
+    Rel(DevicesCont, DevicesDB, "читает/изменяет устройства пользователя")
+    Rel_D(GWCont, DevicesCont, "управлять устройствами")
+}
+
+System_Boundary(SensorsSys, "Sensors System") {
+    Container(SensorCont, "Sensors Service")
+    ContainerDb(SensorDB, "Sensors DB")
+    Rel(SensorCont, SensorDB, "читает/пишет измерения датчиков")
+    Rel_D(GWCont, SensorCont, "читать историю датчиков")
+}
+
+System_Boundary(ActionsSys, "Actions System") {
+    Container(ActionCont, "Actions Service")
+    Rel_D(GWCont, ActionCont, "выполнять действия устройств")
+}
+
+System_Boundary(AutomationSys, "Automations System") {
+    Container(AutomationCont, "Automations Service")
+    ContainerDb(AutomationDB, "Automations DB")
+    Rel(AutomationCont, AutomationDB, "читает/пишет сценарии")
+    Rel_D(GWCont, AutomationCont, "управлять сценариями")
+}
+
+System_Boundary(IntegrSys, "Integrations System") {
+    ContainerQueue(IntegrQ, "Events Queue")
+    Container(IntegrationsCont, "Integrations Service")
+    ContainerDb(IntegrationsDB, "Integrations DB")
+    Rel_L(IntegrationsCont, IntegrationsDB, "читает/пишет устройства")
+    Rel_D(IntegrationsCont, IntegrQ, "читает/пишет события")
+    Rel_D(SensorCont, IntegrQ, "читает измерения датчиков")
+    Rel_D(ActionCont, IntegrQ, "пишет события")
+    Rel_D(AutomationCont, IntegrQ, "читает/пишет события")
+    Rel(DevicesCont, IntegrationsCont, "регистрирует/удаляет устройства")
+
+    Container(TempACLCont, "Anti-corruption Layer Service")
+    Container(LightACLCont, "Anti-corruption Layer Service")
+    Container(DoorACLCont, "Anti-corruption Layer Service")
+    Lay_D(IntegrQ, TempACLCont)
+    Lay_D(IntegrQ, LightACLCont)
+    Lay_D(IntegrQ, DoorACLCont)
+    Lay_D(IntegrationsDB, TempACLCont)
+    Lay_D(IntegrationsDB, LightACLCont)
+    Lay_D(IntegrationsDB, DoorACLCont)
+}
+
+System_Boundary(HeatingSys, "Внешний партнер\n(Температурные датчики)") {
+    Container_Ext(TempCont, "API Партнера")
+    Rel_D(IntegrationsCont, TempACLCont, " ")
+    Rel_D(TempACLCont, TempCont, " ")
+}
+
+System_Boundary(LightSys, "Внешний партнер\n(Лампочки)") {
+    Container_Ext(LightCont, "API Партнера")
+    Rel_D(IntegrationsCont, LightACLCont, " ")
+    Rel_D(LightACLCont, LightCont, " ")
+}
+
+System_Boundary(DoorSys, "Внешний партнер\n(Ворота)") {
+    Container_Ext(DoorCont, "API Партнера")
+    Rel_D(IntegrationsCont, DoorACLCont, " ")
+    Rel_D(DoorACLCont, DoorCont, " ")
+}
+
+@enduml

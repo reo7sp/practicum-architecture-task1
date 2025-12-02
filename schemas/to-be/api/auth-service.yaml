@@ -1,0 +1,162 @@
+openapi: 3.0.3
+info:
+  title: Auth Service API
+  description: Сервис аутентификации и авторизации пользователей
+  version: 1.0.0
+servers:
+  - url: http://localhost:5001
+    description: Сервер аутентификации
+
+tags:
+  - name: Users
+    description: Управление пользователями
+  - name: Sessions
+    description: Управление сессиями и авторизацией
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен для аутентификации
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+    
+    UserRegistration:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: Email пользователя
+        password:
+          type: string
+          format: password
+          example: SecurePass123
+          description: Пароль пользователя
+    
+    UserLogin:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: user@example.com
+          description: Email пользователя
+        password:
+          type: string
+          format: password
+          example: SecurePass123
+          description: Пароль пользователя
+    
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+          description: JWT токен для последующих запросов
+    
+    SessionCheckResponse:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: 123e4567-e89b-12d3-a456-426614174000
+          description: Идентификатор пользователя
+
+  responses:
+    Success:
+      description: Операция выполнена успешно
+
+    Unauthorized:
+      description: Неправильная авторизация - отсутствует или невалидный токен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/users/:
+    post:
+      tags:
+        - Users
+      summary: Регистрация пользователя
+      description: Регистрация нового пользователя в системе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '400':
+          description: Некорректные входные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/sessions/:
+    post:
+      tags:
+        - Sessions
+      summary: Авторизация пользователя
+      description: Аутентификация пользователя и получение токена доступа
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/sessions/check:
+    post:
+      tags:
+        - Sessions
+      summary: Проверка авторизации
+      description: Проверка валидности предоставленного токена
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Токен валиден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionCheckResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
