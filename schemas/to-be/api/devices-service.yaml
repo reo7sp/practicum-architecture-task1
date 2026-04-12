@@ -1,0 +1,166 @@
+openapi: 3.0.3
+info:
+  title: Devices Service API
+  description: Сервис управления устройствами умного дома
+  version: 1.0.0
+servers:
+  - url: http://localhost:5002
+    description: Сервер управления устройствами
+
+tags:
+  - name: Devices
+    description: Управление устройствами пользователя
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+    
+    DeviceRegistration:
+      type: object
+      required:
+        - manufacturer_id
+        - device_id
+        - name
+      properties:
+        manufacturer_id:
+          type: string
+          example: xiaomi
+          description: Идентификатор производителя
+        device_id:
+          type: string
+          example: temp_sensor_001
+          description: Идентификатор устройства
+        name:
+          type: string
+          example: Датчик температуры в гостиной
+          description: Название устройства
+    
+    Device:
+      type: object
+      properties:
+        manufacturer_id:
+          type: string
+          example: xiaomi
+          description: Идентификатор производителя
+        device_id:
+          type: string
+          example: temp_sensor_001
+          description: Идентификатор устройства
+        name:
+          type: string
+          example: Датчик температуры в гостиной
+          description: Название устройства
+    
+    DeviceList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Device'
+
+  responses:
+    Success:
+      description: Операция выполнена успешно
+    
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/devices/:
+    post:
+      tags:
+        - Devices
+      summary: Регистрация устройства
+      description: Регистрация нового устройства для авторизованного пользователя
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistration'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+    
+    get:
+      tags:
+        - Devices
+      summary: Список устройств
+      description: Получение списка устройств авторизованного пользователя
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Смещение для пагинации
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Максимальное количество элементов для возврата
+      responses:
+        '200':
+          description: Операция выполнена успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceList'
+
+  /api/v1/devices/{manufacturer_id}/{device_id}:
+    delete:
+      tags:
+        - Devices
+      summary: Удаление устройства
+      description: Удаление устройства из учетной записи пользователя
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: manufacturer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор производителя устройства
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'

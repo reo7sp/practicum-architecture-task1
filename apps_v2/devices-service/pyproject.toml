@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "devices-service"
+version = "0.1.0"
+description = "Devices Service"
+authors = ["Smart Home Team"]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+Django = "5.0.1"
+djangorestframework = "3.15.1"
+psycopg2-binary = "2.9.9"
+requests = "2.31.0"
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+
+title Диаграмма компонентов - Devices Service
+
+Container_Boundary(api, "Devices Service") {
+    Component(viewsets, "ViewSets", "DRF", "CRUD операции с устройствами")
+    Component(serializers, "Serializers", "DRF", "Валидация данных")
+    Component(models, "Models", "Django ORM", "Модели данных")
+}
+
+ContainerDb(database, "PostgreSQL", "База данных", "Хранит устройства пользователей")
+System_Ext(integration_service, "Integration Service", "Регистрация в системе производителя")
+
+Rel(viewsets, serializers, "Использует")
+Rel(viewsets, models, "Использует")
+Rel(viewsets, integration_service, "Регистрация/Удаление", "HTTP")
+Rel(models, database, "Читает/Пишет", "SQL")
+
+@enduml

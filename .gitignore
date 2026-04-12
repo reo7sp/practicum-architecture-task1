@@ -1,1 +1,10 @@
 .DS_Store
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+apps_v2/api-gateway/api-gateway
+apps_v2/sensors-service/sensors-service

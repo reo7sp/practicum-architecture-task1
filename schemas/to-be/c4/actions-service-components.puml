@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Component>
+
+title Диаграмма компонентов - Actions Service
+
+Container_Boundary(api, "Actions Service") {
+    Component(viewsets, "ViewSets", "DRF", "Выполнение действий")
+    Component(serializers, "Serializers", "DRF", "Валидация данных")
+}
+
+ContainerQueue(kafka, "Kafka", "Message Broker", "Очередь событий")
+
+Rel(viewsets, serializers, "Использует")
+Rel(viewsets, kafka, "Публикует события", "Kafka")
+
+@enduml

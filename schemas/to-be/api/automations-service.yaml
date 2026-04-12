@@ -1,0 +1,204 @@
+openapi: 3.0.3
+info:
+  title: Automations Service API
+  description: Сервис управления сценариями автоматизации умного дома
+  version: 1.0.0
+servers:
+  - url: http://localhost:5004
+    description: Сервер управления автоматизациями
+
+tags:
+  - name: Scenarios
+    description: Управление сценариями автоматизации
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+    
+    ScenarioCreate:
+      type: object
+      required:
+        - name
+        - scenario
+      properties:
+        name:
+          type: string
+          example: Утренняя рутина
+          description: Название сценария
+        scenario:
+          type: object
+          description: Произвольный JSON объект, определяющий сценарий
+          example:
+            triggers:
+              - type: time
+                value: "07:00"
+            actions:
+              - device_id: light_001
+                action: turn_on
+    
+    ScenarioCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: scenario_123
+          description: Идентификатор созданного сценария
+    
+    Scenario:
+      type: object
+      properties:
+        id:
+          type: string
+          example: scenario_123
+          description: Идентификатор сценария
+        name:
+          type: string
+          example: Утренняя рутина
+          description: Название сценария
+        scenario:
+          type: object
+          description: Произвольный JSON объект, определяющий сценарий
+    
+    ScenarioList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Scenario'
+
+  responses:
+    Success:
+      description: Операция выполнена успешно
+    
+    NotFound:
+      description: Сценарий не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/scenarios/:
+    post:
+      tags:
+        - Scenarios
+      summary: Создание сценария
+      description: Создание нового сценария автоматизации
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioCreate'
+      responses:
+        '200':
+          description: Сценарий успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioCreateResponse'
+    
+    get:
+      tags:
+        - Scenarios
+      summary: Список сценариев
+      description: Получение списка сценариев автоматизации
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Смещение для пагинации
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Максимальное количество элементов для возврата
+      responses:
+        '200':
+          description: Операция выполнена успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioList'
+
+  /api/v1/scenarios/{id}:
+    post:
+      tags:
+        - Scenarios
+      summary: Изменение сценария
+      description: Обновление существующего сценария автоматизации
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор сценария
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioCreate'
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    delete:
+      tags:
+        - Scenarios
+      summary: Удаление сценария
+      description: Удаление сценария автоматизации
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор сценария
+      responses:
+        '200':
+          $ref: '#/components/responses/Success'
+        '404':
+          $ref: '#/components/responses/NotFound'

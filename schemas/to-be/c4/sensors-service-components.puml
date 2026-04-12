@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Component>
+
+title Диаграмма компонентов - Sensors Service
+
+Container_Boundary(api, "Sensors Service") {
+    Component(handlers, "Handlers", "Go", "Обработка HTTP запросов")
+    Component(consumer, "Kafka Consumer", "Go", "Слушает события")
+    Component(models, "DB", "Go", "Модели данных")
+}
+
+ContainerDb(database, "PostgreSQL", "База данных", "Хранит показания датчиков")
+ContainerQueue(kafka, "Kafka", "Message Broker", "Очередь событий")
+
+Rel(handlers, models, "Использует")
+Rel(consumer, kafka, "Подписывается", "Kafka")
+Rel(consumer, models, "Сохраняет показания")
+Rel(models, database, "Читает/Пишет", "SQL")
+
+@enduml

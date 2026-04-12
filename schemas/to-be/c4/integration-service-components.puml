@@ -1,0 +1,26 @@
+@startuml
+!include <C4/C4_Component>
+
+title Диаграмма компонентов - Integration Service
+
+Container_Boundary(api, "Integration Service") {
+    Component(viewsets, "ViewSets", "DRF", "Регистрация устройств")
+    Component(serializers, "Serializers", "DRF", "Валидация данных")
+    Component(consumer, "Kafka Consumer", "Consumer", "Слушает события")
+    Component(producer, "Kafka Producer", "Producer", "Публикует события")
+    Component(models, "Models", "Django ORM", "Модели данных")
+}
+
+ContainerDb(database, "PostgreSQL", "База данных", "Реестр устройств")
+ContainerQueue(kafka, "Kafka", "Message Broker", "Очередь событий")
+System_Ext(acl_service, "Anti-corruption Layer", "API Партнера")
+
+Rel(viewsets, serializers, "Использует")
+Rel(viewsets, models, "Использует")
+Rel(viewsets, acl_service, "Вызывает", "HTTP")
+Rel(consumer, kafka, "Подписывается", "Kafka")
+Rel(consumer, acl_service, "Вызывает", "HTTP")
+Rel(producer, kafka, "Публикует события", "Kafka")
+Rel(models, database, "Читает/Пишет", "SQL")
+
+@enduml

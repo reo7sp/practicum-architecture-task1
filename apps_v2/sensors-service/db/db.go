@@ -1,0 +1,293 @@
+package db
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"time"
+
+	"sensors-service/models"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type DB struct {
+	Pool *pgxpool.Pool
+}
+
+func New(connString string) (*DB, error) {
+	pool, err := pgxpool.New(context.Background(), connString)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
+	}
+
+	if err := pool.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("unable to ping database: %w", err)
+	}
+
+	return &DB{Pool: pool}, nil
+}
+
+func (db *DB) Close() {
+	if db.Pool != nil {
+		db.Pool.Close()
+	}
+}
+
+func (db *DB) GetSensors(ctx context.Context) ([]models.Sensor, error) {
+	query := `
+		SELECT id, name, type, location, value, unit, status, last_updated, created_at
+		FROM sensors
+		ORDER BY id
+	`
+
+	rows, err := db.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensors: %w", err)
+	}
+	defer rows.Close()
+
+	var sensors []models.Sensor
+	for rows.Next() {
+		var s models.Sensor
+		err := rows.Scan(
+			&s.ID,
+			&s.Name,
+			&s.Type,
+			&s.Location,
+			&s.Value,
+			&s.Unit,
+			&s.Status,
+			&s.LastUpdated,
+			&s.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning sensor row: %w", err)
+		}
+		sensors = append(sensors, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating sensor rows: %w", err)
+	}
+
+	return sensors, nil
+}
+
+func (db *DB) GetSensorByID(ctx context.Context, id int) (models.Sensor, error) {
+	query := `
+		SELECT id, name, type, location, value, unit, status, last_updated, created_at
+		FROM sensors
+		WHERE id = $1
+	`
+
+	var s models.Sensor
+	err := db.Pool.QueryRow(ctx, query, id).Scan(
+		&s.ID,
+		&s.Name,
+		&s.Type,
+		&s.Location,
+		&s.Value,
+		&s.Unit,
+		&s.Status,
+		&s.LastUpdated,
+		&s.CreatedAt,
+	)
+	if err != nil {
+		return models.Sensor{}, fmt.Errorf("error getting sensor by ID: %w", err)
+	}
+
+	return s, nil
+}
+
+func (db *DB) CreateSensor(ctx context.Context, s models.SensorCreate) (models.Sensor, error) {
+	query := `
+		INSERT INTO sensors (name, type, location, unit, status, last_updated, created_at)
+		VALUES ($1, $2, $3, $4, 'inactive', $5, $5)
+		RETURNING id, name, type, location, value, unit, status, last_updated, created_at
+	`
+
+	now := time.Now()
+	var sensor models.Sensor
+	err := db.Pool.QueryRow(ctx, query,
+		s.Name,
+		s.Type,
+		s.Location,
+		s.Unit,
+		now,
+	).Scan(
+		&sensor.ID,
+		&sensor.Name,
+		&sensor.Type,
+		&sensor.Location,
+		&sensor.Value,
+		&sensor.Unit,
+		&sensor.Status,
+		&sensor.LastUpdated,
+		&sensor.CreatedAt,
+	)
+	if err != nil {
+		return models.Sensor{}, fmt.Errorf("error creating sensor: %w", err)
+	}
+
+	return sensor, nil
+}
+
+func (db *DB) UpdateSensor(ctx context.Context, id int, s models.SensorUpdate) (models.Sensor, error) {
+	_, err := db.GetSensorByID(ctx, id)
+	if err != nil {
+		return models.Sensor{}, err
+	}
+
+	query := "UPDATE sensors SET last_updated = $1"
+	args := []interface{}{time.Now()}
+	argCount := 2
+
+	if s.Name != "" {
+		query += fmt.Sprintf(", name = $%d", argCount)
+		args = append(args, s.Name)
+		argCount++
+	}
+
+	if s.Type != "" {
+		query += fmt.Sprintf(", type = $%d", argCount)
+		args = append(args, s.Type)
+		argCount++
+	}
+
+	if s.Location != "" {
+		query += fmt.Sprintf(", location = $%d", argCount)
+		args = append(args, s.Location)
+		argCount++
+	}
+
+	if s.Value != nil {
+		query += fmt.Sprintf(", value = $%d", argCount)
+		args = append(args, *s.Value)
+		argCount++
+	}
+
+	if s.Unit != "" {
+		query += fmt.Sprintf(", unit = $%d", argCount)
+		args = append(args, s.Unit)
+		argCount++
+	}
+
+	if s.Status != "" {
+		query += fmt.Sprintf(", status = $%d", argCount)
+		args = append(args, s.Status)
+		argCount++
+	}
+
+	query += ` WHERE id = $` + fmt.Sprintf("%d", argCount) + `
+		RETURNING id, name, type, location, value, unit, status, last_updated, created_at`
+	args = append(args, id)
+
+	var sensor models.Sensor
+	err = db.Pool.QueryRow(ctx, query, args...).Scan(
+		&sensor.ID,
+		&sensor.Name,
+		&sensor.Type,
+		&sensor.Location,
+		&sensor.Value,
+		&sensor.Unit,
+		&sensor.Status,
+		&sensor.LastUpdated,
+		&sensor.CreatedAt,
+	)
+	if err != nil {
+		return models.Sensor{}, fmt.Errorf("error updating sensor: %w", err)
+	}
+
+	return sensor, nil
+}
+
+func (db *DB) DeleteSensor(ctx context.Context, id int) error {
+	query := "DELETE FROM sensors WHERE id = $1"
+	result, err := db.Pool.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("error deleting sensor: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return errors.New("sensor not found")
+	}
+
+	return nil
+}
+
+func (db *DB) UpdateSensorValue(ctx context.Context, id int, value float64, status string) error {
+	query := `
+		UPDATE sensors
+		SET value = $1, status = $2, last_updated = $3
+		WHERE id = $4
+	`
+
+	result, err := db.Pool.Exec(ctx, query, value, status, time.Now(), id)
+	if err != nil {
+		return fmt.Errorf("error updating sensor value: %w", err)
+	}
+
+	if result.RowsAffected() == 0 {
+		return errors.New("sensor not found")
+	}
+
+	return nil
+}
+
+func (db *DB) GetSensorIDByV2ID(ctx context.Context, manufacturerID, deviceID, sensorID string) (int, error) {
+	query := `
+		SELECT id
+		FROM sensor_v2_ids
+		WHERE manufacturer_id = $1 AND device_id = $2 AND sensor_id = $3
+	`
+
+	var id int
+	err := db.Pool.QueryRow(ctx, query, manufacturerID, deviceID, sensorID).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("error getting sensor ID by v2 ID: %w", err)
+	}
+
+	return id, nil
+}
+
+func (db *DB) GetSensorV2IDsByDevice(ctx context.Context, manufacturerID, deviceID string, offset, limit int) ([]models.SensorV2ID, error) {
+	query := `
+		SELECT manufacturer_id, device_id, sensor_id, id
+		FROM sensor_v2_ids
+		WHERE manufacturer_id = $1 AND device_id = $2
+		ORDER BY sensor_id
+		LIMIT $3 OFFSET $4
+	`
+
+	rows, err := db.Pool.Query(ctx, query, manufacturerID, deviceID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("error querying sensor v2 IDs: %w", err)
+	}
+	defer rows.Close()
+
+	var v2IDs []models.SensorV2ID
+	for rows.Next() {
+		var v2ID models.SensorV2ID
+		err := rows.Scan(
+			&v2ID.ManufacturerID,
+			&v2ID.DeviceID,
+			&v2ID.SensorID,
+			&v2ID.ID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning sensor v2 ID row: %w", err)
+		}
+		v2IDs = append(v2IDs, v2ID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating sensor v2 ID rows: %w", err)
+	}
+
+	return v2IDs, nil
+}
+
+func (db *DB) SaveSensorReading(ctx context.Context, sensorID int, value float64, status string, _ time.Time) error {
+	return db.UpdateSensorValue(ctx, sensorID, value, status)
+}

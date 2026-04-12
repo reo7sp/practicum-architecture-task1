@@ -1,0 +1,510 @@
+openapi: 3.0.3
+info:
+  title: Sensors Service API
+  description: Сервис получения данных с датчиков умного дома
+  version: 1.0.0
+servers:
+  - url: http://localhost:5005
+    description: Сервер управления датчиками
+
+tags:
+  - name: Sensors
+    description: Получение данных датчиков и их истории
+
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Сообщение об ошибке
+    
+    Sensor:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+          description: Идентификатор датчика
+        name:
+          type: string
+          example: Living Room Temperature Sensor
+          description: Название датчика
+        type:
+          type: string
+          enum: [temperature]
+          example: temperature
+          description: Тип датчика
+        location:
+          type: string
+          example: Living Room
+          description: Локация датчика
+        value:
+          type: number
+          format: float
+          example: 22.5
+          description: Текущее значение
+        unit:
+          type: string
+          example: °C
+          description: Единица измерения
+        status:
+          type: string
+          enum: [active, inactive]
+          example: active
+          description: Статус датчика
+        last_updated:
+          type: string
+          format: date-time
+          description: Время последнего обновления
+        created_at:
+          type: string
+          format: date-time
+          description: Время создания
+    
+    SensorCreate:
+      type: object
+      required:
+        - name
+        - type
+        - location
+      properties:
+        name:
+          type: string
+          example: Living Room Temperature Sensor
+          description: Название датчика
+        type:
+          type: string
+          enum: [temperature]
+          example: temperature
+          description: Тип датчика
+        location:
+          type: string
+          example: Living Room
+          description: Локация датчика
+        unit:
+          type: string
+          example: °C
+          description: Единица измерения
+    
+    SensorUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Living Room Temperature Sensor
+          description: Название датчика
+        type:
+          type: string
+          enum: [temperature]
+          example: temperature
+          description: Тип датчика
+        location:
+          type: string
+          example: Living Room
+          description: Локация датчика
+        value:
+          type: number
+          format: float
+          example: 22.5
+          description: Текущее значение
+        unit:
+          type: string
+          example: °C
+          description: Единица измерения
+        status:
+          type: string
+          enum: [active, inactive]
+          example: active
+          description: Статус датчика
+    
+    SensorValueUpdate:
+      type: object
+      required:
+        - value
+        - status
+      properties:
+        value:
+          type: number
+          format: float
+          example: 22.5
+          description: Новое значение
+        status:
+          type: string
+          enum: [active, inactive]
+          example: active
+          description: Статус датчика
+    
+    SensorListV2:
+      type: array
+      items:
+        type: object
+        properties:
+          sensor_id:
+            type: string
+            example: temperature
+            description: Идентификатор датчика
+    
+    SensorHistoryV2:
+      type: array
+      items:
+        type: object
+        properties:
+          name:
+            type: string
+            example: Living Room Temperature Sensor
+            description: Название датчика
+          type:
+            type: string
+            example: temperature
+            description: Тип датчика
+          location:
+            type: string
+            example: Living Room
+            description: Локация датчика
+          value:
+            type: number
+            format: float
+            example: 22.5
+            description: Значение
+          unit:
+            type: string
+            example: °C
+            description: Единица измерения
+          status:
+            type: string
+            example: active
+            description: Статус датчика
+          timestamp:
+            type: string
+            format: date-time
+            example: "2025-12-02T21:36:08.455Z"
+            description: Временная метка записи
+
+  responses:
+    Success:
+      description: Операция выполнена успешно
+    
+    NotFound:
+      description: Датчик не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  /api/v1/sensors:
+    get:
+      tags:
+        - Sensors
+      summary: Получение списка датчиков
+      description: Получение всех датчиков с обновлением температурных датчиков в реальном времени
+      responses:
+        '200':
+          description: Список датчиков
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Sensor'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      tags:
+        - Sensors
+      summary: Создание датчика
+      description: Создание нового датчика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SensorCreate'
+      responses:
+        '201':
+          description: Датчик создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Некорректные входные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/sensors/{id}:
+    get:
+      tags:
+        - Sensors
+      summary: Получение датчика по ID
+      description: Получение конкретного датчика с обновлением данных из temperature API
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор датчика
+      responses:
+        '200':
+          description: Данные датчика
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Некорректный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    put:
+      tags:
+        - Sensors
+      summary: Обновление датчика
+      description: Обновление информации о датчике
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор датчика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SensorUpdate'
+      responses:
+        '200':
+          description: Датчик обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Sensors
+      summary: Удаление датчика
+      description: Удаление датчика из системы
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор датчика
+      responses:
+        '200':
+          description: Датчик удален
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Sensor deleted successfully
+        '400':
+          description: Некорректный ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/sensors/{id}/value:
+    patch:
+      tags:
+        - Sensors
+      summary: Обновление значения датчика
+      description: Обновление текущего значения и статуса датчика
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Идентификатор датчика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SensorValueUpdate'
+      responses:
+        '200':
+          description: Значение обновлено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Sensor value updated successfully
+        '400':
+          description: Некорректные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/devices/{manufacturer_id}/{device_id}/sensors/:
+    get:
+      tags:
+        - Sensors
+      summary: Получение списка сенсоров (v2)
+      description: Получение списка датчиков конкретного устройства
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: manufacturer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор производителя устройства
+          example: xiaomi
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+          example: sensor_001
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Смещение для пагинации
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Максимальное количество элементов для возврата
+      responses:
+        '200':
+          description: Операция выполнена успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensorListV2'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/devices/{manufacturer_id}/{device_id}/sensors/{sensor_id}:
+    get:
+      tags:
+        - Sensors
+      summary: Получение истории сенсора (v2)
+      description: Получение исторических данных конкретного датчика
+      parameters:
+        - name: X-User-ID
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Идентификатор пользователя
+          example: 123e4567-e89b-12d3-a456-426614174000
+        - name: manufacturer_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор производителя устройства
+          example: xiaomi
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор устройства
+          example: sensor_001
+        - name: sensor_id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Идентификатор датчика
+          example: temperature
+        - name: start
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Начальное время для исторических данных
+          example: "2025-12-01T00:00:00Z"
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+          description: Смещение для пагинации
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Максимальное количество элементов для возврата
+      responses:
+        '200':
+          description: Операция выполнена успешно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SensorHistoryV2'
+        '404':
+          $ref: '#/components/responses/NotFound'

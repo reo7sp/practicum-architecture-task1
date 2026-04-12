@@ -1,0 +1,11 @@
+@startuml
+
+entity "devices" as devices {
+  * manufacturer_id : VARCHAR(100) <<PK>>
+  * device_id : VARCHAR(100) <<PK>>
+  --
+  * created_at : TIMESTAMP
+  * updated_at : TIMESTAMP
+}
+
+@enduml
